@@ -1,6 +1,7 @@
 import { Placement } from "./utils";
 import { updateClassComponent, updateFragmentComponent, updateFunctionComponent, updateHostComponent, updateHostTextComponent } from "./ReactFiberReconciler";
 import { ClassComponent, Fragment, FunctionComponent, HostComponent, HostText } from "./ReactWorkTags";
+import { scheduleCallback } from "./scheduler";
 
 let wip = null; // work in progess 当前正在工作中的
 let wipRoot = null;
@@ -9,10 +10,12 @@ let wipRoot = null;
 export function scheduleUpdateOnFiber(fiber) {
     wip = fiber;
     wipRoot = fiber;
+
+    scheduleCallback(workLoop)
 }
 function performUnitOfWork() {
     // console.log('wip', wip);
-    
+
     // 1. 更新当前节点
     const { tag } = wip;
     switch (tag) {
@@ -63,7 +66,7 @@ function workLoop(IdleDeaLine) {
     }
 }
 
-requestIdleCallback(workLoop)
+// requestIdleCallback(workLoop)
 
 // 提交
 function commitRoot() {
@@ -79,7 +82,7 @@ function commitWorker(wip) {
     // 1. 提交自己 -- 将自己挂在父结点上
     const parentNode = getParentNode(wip.return); // 只有原生节点能这么处理, 函数组件和类组件会返回一个函数, 不能这么做
     const { flags, stateNode } = wip;
-    if(flags & Placement && stateNode){
+    if (flags & Placement && stateNode) {
         parentNode.appendChild(stateNode)
     }
     // 2. 提交子节点
@@ -88,10 +91,10 @@ function commitWorker(wip) {
     commitWorker(wip.sibling)
 }
 
-function getParentNode(node){
+function getParentNode(node) {
     let tem = node;
-    while(tem){
-        if(tem.stateNode){
+    while (tem) {
+        if (tem.stateNode) {
             return tem.stateNode;
         }
         tem = tem.return;
