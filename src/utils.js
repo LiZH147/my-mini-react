@@ -33,14 +33,18 @@ export function isStr(sth) {
     return typeof sth === "string";
 }
 
-export function isStringOrNumber(s){
+export function isUndefined(s) {
+    return s === undefined;
+}
+
+export function isStringOrNumber(s) {
     return typeof s === "string" || typeof s === "number"
 }
 
-export function updateNode(node, nextVal){
+export function updateNode(node, nextVal) {
     Object.keys(nextVal).forEach((k) => {
-        if(k === 'children'){
-            if(isStringOrNumber(nextVal[k])){
+        if (k === 'children') {
+            if (isStringOrNumber(nextVal[k])) {
                 node.textContent = nextVal[k];
             }
         } else {

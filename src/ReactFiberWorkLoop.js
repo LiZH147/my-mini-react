@@ -11,6 +11,8 @@ export function scheduleUpdateOnFiber(fiber) {
     wipRoot = fiber;
 }
 function performUnitOfWork() {
+    // console.log('wip', wip);
+    
     // 1. 更新当前节点
     const { tag } = wip;
     switch (tag) {
@@ -75,7 +77,7 @@ function commitWorker(wip) {
     }
 
     // 1. 提交自己 -- 将自己挂在父结点上
-    const parentNode = wip.return.stateNode; // 只有原生节点能这么处理, 函数组件和类组件会返回一个函数, 不能这么做
+    const parentNode = getParentNode(wip.return); // 只有原生节点能这么处理, 函数组件和类组件会返回一个函数, 不能这么做
     const { flags, stateNode } = wip;
     if(flags & Placement && stateNode){
         parentNode.appendChild(stateNode)
@@ -84,4 +86,14 @@ function commitWorker(wip) {
     commitWorker(wip.child);
     // 3. 提交兄弟节点
     commitWorker(wip.sibling)
+}
+
+function getParentNode(node){
+    let tem = node;
+    while(tem){
+        if(tem.stateNode){
+            return tem.stateNode;
+        }
+        tem = tem.return;
+    }
 }
