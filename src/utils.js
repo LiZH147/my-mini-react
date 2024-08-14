@@ -41,12 +41,30 @@ export function isStringOrNumber(s) {
     return typeof s === "string" || typeof s === "number"
 }
 
-export function updateNode(node, nextVal) {
+// 简单做一个去除、卸载全部属性后，再添加新的
+export function updateNode(node, prevVal, nextVal) {
+    Object.keys(prevVal).forEach((k) => {
+        if (k === 'children') {
+            if (isStringOrNumber(nextVal[k])) {
+                node.textContent = "";
+            }
+        } else if (k.slice(0, 2) === 'on') {
+            const eventName = k.slice(2).toLocaleLowerCase();
+            node.removeEventListener(eventName, nextVal[k])
+        } else {
+            if (!(k in nextVal)) {
+                node[k] = "";
+            }
+        }
+    })
     Object.keys(nextVal).forEach((k) => {
         if (k === 'children') {
             if (isStringOrNumber(nextVal[k])) {
                 node.textContent = nextVal[k];
             }
+        } else if (k.slice(0, 2) === 'on') {
+            const eventName = k.slice(2).toLocaleLowerCase();
+            node.addEventListener(eventName, nextVal[k])
         } else {
             node[k] = nextVal[k];
         }

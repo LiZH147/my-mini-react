@@ -1,4 +1,4 @@
-import { peek, push } from "./minHeap";
+import { peek, push, pop } from "./minHeap";
 
 let taskQueue = [];
 let taskIdCounter = 1;

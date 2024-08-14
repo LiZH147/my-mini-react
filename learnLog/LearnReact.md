@@ -54,3 +54,91 @@ export const Forked = /*                       */ 0b00000010000000000000000000;
     2. 直接调用reconcileChildren渲染子节点即可
 
 ![alt text](./fiber初次渲染.jpg)
+
+
+# 实现简版Scheduler
+## 实现该场景下的最小堆
+1. 返回堆顶元素 --- peek(heap) --- return heap[0];
+2. 插入元素 --- push(heap, node)
+    1. 放入数组尾部
+    2. 向上调整最小堆 --- siftUp(heap, node, index) --- 从index向上调整node
+        1. 父节点下标 = (子节点下标 - 1) / 2 = (子节点下标 - 1) >> 1
+        2. 比较函数compare(parent, node) --- 先比较优先级，相同时再比较id
+        3. 交换
+3. 删除堆顶元素 --- pop(heap)
+    1. 用数组尾部元素覆盖heap[0]
+    2. 向下调整最小堆 --- siftDown(heap, last, 0)
+        1. 左子节点下标 = (父节点下标 + 1) * 2 - 1；
+           右子节点下标 = 左子节点下标 + 1
+        2. 比较并交换
+            + left < node
+                + right < left 交换right和node
+                + 交换left和node
+            + right < node
+                + right < left 交换right和node
+            + return
+## 实现简版Scheduler
+1. 构造暴露在外的SchedulerCallback函数
+    + 构造任务对象newTask
+    + push进任务队列
+    + 请求调度requestHostCallback()
+    + 利用MessageChannel API实现调度请求
+    port通知port2开启wookLoop
+2. 在初次渲染和更新的函数scheduleUpdateOnFiber中调用scheduleCallback(wookLoop)
+
+# Hook解决了什么问题
+## 组件之间复用逻辑状态难
+render props 和告诫组件需要重新组织组件结构
+hook可以在不修改组件结构的情况下复用状态逻辑
+## 复杂组件难以理解
+componentDidMount只有一个，逻辑复杂时很臃肿；setState也只有一个
+hook将组件中相互关联的部分拆成更小的函数
+## 难以理解的class
+class中的this经常undefined，需要bind一下
+class不能很好的压缩，会使热重载出现不稳定的情况
+
+# Hook原理 --- 单链表
+![alt text](image-1.png)
+
+# useReducer
+useState的替代方案，接受形如`(state, dispatch) => newState`的reducer，并返回当前的state以及与其配套的dispatch方法。
++ state逻辑复杂且包含多个子值， 或者下一个state依赖于之前的state
++ 使用useReducer能给会触发深更新的组件做性能优化，因为可以向子组件传递dispatch而不是回调函数
+## 简单实现
+1. 在utils.js中增加对事件的监听 --- 简版
+2. 新建hooks.js文件简单实现useReducer
+```js
+/**
+ * 1. 状态值和hook等挂在哪里？ --- 函数组件的fiber上 --- 怎么获取当前的fiber --- 涉及到workLoop文件
+ * 2. 获取当前正要渲染的hook
+ *  1.拿到当前的hook: current = currentlyRenderingFiber.alternate;
+ *    workInProgressHook指向当前正处理的hook，初始为null
+ *    + current空为初次渲染---初始化hook
+ *      1. 定义hook对象(memorizedState + next)
+ *      2. workInProgressHook为空，则为hook0，挂在currentlyRenderingFiber.memorizedState上
+ *      3. workInProgressHook非空，挂在workInProgressHook.next上
+ *    + current非空为组件更新---按顺序找下一个hook
+ *      1.初始化 正要更新的fiber 上的hook0为当前fiber的fiber0
+ *      2. workInProgressHook为空，则将当前工作hook和要返回的hook都指向currentlyRenderingFiber.memorizedState
+ *      3. workInProgressHook非空，则都指向next
+ * 3. 判断是不是初次渲染 --- currentlyRenderingFiber.alternate
+ *      初次渲染传入initalState
+ * 4. dispatch执行传入的回调函数
+ *  1. 更新hook上的memorizedState
+ *  2. 更新fiber节点上的alternate
+ *  3. 调用scheduleUpdateOnFiber(currentlyRenderingFiber)从当前节点开始更新
+ *  4. 返回[hook.memorizedState, dispatch]
+ */
+```
+3. 完成更新函数组件的部分
+    1. diff协调，vDOM层级更新fiber
+        + 节点复用的条件：1. 同一层级下 2. 类型相同 3. key相同
+        + 使用Object.assign(newFiber, {})做属性的合并与复用，主要是
+        ```js
+        Object.assign(newFiber, {
+            stateNode: oldFiber.stateNode,
+            alternate: oldFiber,
+            flags: Update,
+        })
+        ```
+    2. 提交阶段，DOM层级更新 --- updataNode(node, prevVal, nextVal) --- 简单做一个旧属性prevVal的卸载与清除，再做一个新属性的挂载

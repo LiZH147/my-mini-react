@@ -1,4 +1,4 @@
-import { Placement } from "./utils";
+import { Placement, Update, updateNode } from "./utils";
 import { updateClassComponent, updateFragmentComponent, updateFunctionComponent, updateHostComponent, updateHostTextComponent } from "./ReactFiberReconciler";
 import { ClassComponent, Fragment, FunctionComponent, HostComponent, HostText } from "./ReactWorkTags";
 import { scheduleCallback } from "./scheduler";
@@ -57,7 +57,7 @@ function performUnitOfWork() {
 }
 
 function workLoop(IdleDeaLine) {
-    while (wip && IdleDeaLine.timeRemaining() > 0) {
+    while (wip) {
         performUnitOfWork();
     }
 
@@ -84,6 +84,10 @@ function commitWorker(wip) {
     const { flags, stateNode } = wip;
     if (flags & Placement && stateNode) {
         parentNode.appendChild(stateNode)
+    }
+
+    if (flags & Update && stateNode) {
+        updateNode(stateNode, wip.alternate.props, wip.props);
     }
     // 2. 提交子节点
     commitWorker(wip.child);

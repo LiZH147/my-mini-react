@@ -21,7 +21,14 @@ export function createFiber(vnode, returnFiber) {
         return: returnFiber,
         flags: Placement,
         // 记录节点在当前层级下的位置
-        index: null
+        index: null,
+
+        // 记录旧fiber
+        alternate: null,
+        // 存储hook链表头
+        // 函数组件存的是hook0
+        // 类组件存的是状态
+        memorizedState: null
     }
     // 检查Tag值
     const { type } = vnode;
