@@ -26,18 +26,18 @@ let currentlyRenderingFiber = null; // 当前需要更新hook的fiber节点
 let workInProgressHook = null; // 当前更新到哪个hook了
 
 // 获取当前要更新hook的fiber --- 只在函数组件渲染或更新时调用一次
-export function renderWithHooks(wip){
+export function renderWithHooks(wip) {
     currentlyRenderingFiber = wip;
     currentlyRenderingFiber.memorizedState = null;
     workInProgressHook = null;
 }
-function updateWorkInProgressHook(){
+function updateWorkInProgressHook() {
     let hook;
     const current = currentlyRenderingFiber.alternate; // 当前更新fiber节点的老hook0
-    if(current){
+    if (current) {
         // 组件更新
         currentlyRenderingFiber.memorizedState = current.memorizedState;
-        if(workInProgressHook){
+        if (workInProgressHook) {
             workInProgressHook = hook = workInProgressHook.next
         } else {
             // hook0
@@ -49,27 +49,46 @@ function updateWorkInProgressHook(){
             memorizedState: null,
             next: null
         }
-        if(workInProgressHook){
+        if (workInProgressHook) {
             workInProgressHook = workInProgressHook.next = hook;
-        }else {
+        } else {
             // hook0
             workInProgressHook = currentlyRenderingFiber.memorizedState = hook;
         }
     }
     return hook;
 }
-export function useReducer(reducer, initalState){
+export function useReducer(reducer, initalState) {
+    
     const hook = updateWorkInProgressHook();
 
-    if(!currentlyRenderingFiber.alternate){
+    if (!currentlyRenderingFiber.alternate) {
         hook.memorizedState = initalState;
     }
-    const dispatch = () => {
-        hook.memorizedState = reducer(hook.memorizedState);
-        currentlyRenderingFiber.alternate = {...currentlyRenderingFiber};
-        scheduleUpdateOnFiber(currentlyRenderingFiber); // 从当前函数节点开始更新
-        console.log('useReducer dispatch');
-        
-    }
+    // const dispatch = () => {
+    //     hook.memorizedState = reducer(hook.memorizedState);
+    //     currentlyRenderingFiber.alternate = {...currentlyRenderingFiber};
+    //     scheduleUpdateOnFiber(currentlyRenderingFiber); // 从当前函数节点开始更新
+    //     console.log('useReducer dispatch');
+    // }
+    const dispatch = dispatchReducerAction.bind(
+        null,
+        currentlyRenderingFiber,
+        hook,
+        reducer
+    );
     return [hook.memorizedState, dispatch]
+}
+
+function dispatchReducerAction(fiber, hook, reducer, action) {
+    hook.memorizedState = reducer ? reducer(hook.memorizedState) : action;
+    fiber.alternate = { ...fiber };
+    fiber.sibling = null; // 在commit中会提交兄弟节点，但此处不应该更新兄弟节点
+    scheduleUpdateOnFiber(fiber);
+    console.log('dispatchReducerAction');
+
+}
+
+export function useState(initalState) {
+    return useReducer(null, initalState);
 }

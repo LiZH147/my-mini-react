@@ -142,3 +142,37 @@ useState的替代方案，接受形如`(state, dispatch) => newState`的reducer�
         })
         ```
     2. 提交阶段，DOM层级更新 --- updataNode(node, prevVal, nextVal) --- 简单做一个旧属性prevVal的卸载与清除，再做一个新属性的挂载
+
+# useState
+## 完善useReducer
+currentlyRenderingFiber为全局变量，且只会在当第一次渲染时改变，因此在更新时永远指向最后一个渲染的函数组件。这就导致，最后一个函数组件之前的所有函数组件都不会被更新。
+解决：修改dispatch，在渲染时就将当前的fiber、hook、reducer与dispatch绑定
+```js
+export function useReducer(reducer, initalState) {
+  ...
+  const dispatch = dispatchReducerAction.bind(
+    null,
+    currentlyRenderingFiber,
+    hook,
+    reducer
+  );
+
+  return [hook.memorizedState, dispatch];
+}
+function dispatchReducerAction(fiber, hook, reducer, action){
+    hook.memorizedState = reducer ? reducer(hook.memorizedState) : action
+    fiber.alternate = { ...fiber };
+    fiber.sibling = null;
+    scheduleUpdateOnFiber(fiber);
+}
+```
+## 利用useReducer的dispatch实现useState
+```js
+export function useState(initalState) {
+  return useReducer(null, initalState);
+}
+```
+
+# 实现删除节点
+1. 在需要删除节点的父fiber上新增一个deletions数组属性，用来记录要删除的fiber
+2. 在提交commit时遍历deletions数组，进行removeChild

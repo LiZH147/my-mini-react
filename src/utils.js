@@ -50,7 +50,7 @@ export function updateNode(node, prevVal, nextVal) {
             }
         } else if (k.slice(0, 2) === 'on') {
             const eventName = k.slice(2).toLocaleLowerCase();
-            node.removeEventListener(eventName, nextVal[k])
+            node.removeEventListener(eventName, prevVal[k])
         } else {
             if (!(k in nextVal)) {
                 node[k] = "";
