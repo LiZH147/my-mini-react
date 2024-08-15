@@ -176,3 +176,19 @@ export function useState(initalState) {
 # 实现删除节点
 1. 在需要删除节点的父fiber上新增一个deletions数组属性，用来记录要删除的fiber
 2. 在提交commit时遍历deletions数组，进行removeChild
+## 删除老节点( 0 1 2 3 4 --- 0 5 2)
+1. 在之前的删除中，只处理到全部有更新的节点，后续的老节点不会涉及，因此在之前的删除中可以拿到的是第一个没处理的老节点oldFiber
+2. 实现删除老节点的函数`deleteRemainingChildren(returnFiber, currentFirstChild)` --- 循环调用`deleteChild()`即可
+
+# 真正的React VDOM Diff
+![alt text](image-2.png)
+## 初次渲染
+0. 初次渲染分为两种情况：
+    + 真正的第一次进来，第一次渲染
+    + 更新时老节点都没了，只有新节点
+1. 新增变量：
+    + shouldTrackSideEffects = !! returnFiber.alternate 用于判断returnFiber是初次渲染还是更新
+    + lastPlacedIndex = 0 上一次插入节点的位置 --- 用来判断更新时节点是否移动
+    + 启用fiber节点的index属性，记录节点在链表中的位置
+2. 实现放置子节点位置的函数PlacedChild的初次渲染部分，即给fiber.index赋初始值
+## 更新

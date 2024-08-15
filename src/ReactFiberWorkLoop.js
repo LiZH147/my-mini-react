@@ -99,8 +99,8 @@ function commitWorker(wip) {
     commitWorker(wip.sibling)
 }
 
-function getParentNode(node) {
-    let tem = node;
+function getParentNode(wip) {
+    let tem = wip;
     while (tem) {
         if (tem.stateNode) {
             return tem.stateNode;
