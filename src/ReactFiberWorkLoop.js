@@ -75,6 +75,8 @@ function commitRoot() {
 }
 
 function commitWorker(wip) {
+    console.log(wip);
+
     if (!wip) {
         return;
     }
@@ -83,14 +85,16 @@ function commitWorker(wip) {
     const parentNode = getParentNode(wip.return); // 只有原生节点能这么处理, 函数组件和类组件会返回一个函数, 不能这么做
     const { flags, stateNode } = wip;
     if (flags & Placement && stateNode) {
-        parentNode.appendChild(stateNode)
+        const before = getHostSibling(wip.sibling);
+        insertOrAppendPlacementNode(stateNode, before, parentNode);
+        // parentNode.appendChild(stateNode)
     }
 
     if (flags & Update && stateNode) {
         updateNode(stateNode, wip.alternate.props, wip.props);
     }
 
-    if(wip.deletions){
+    if (wip.deletions) {
         commitDeletions(wip.deletions, stateNode || parentNode);
     }
     // 2. 提交子节点
@@ -109,8 +113,8 @@ function getParentNode(wip) {
     }
 }
 
-function commitDeletions(deletions, parentNode){
-    for(let i = 0; i< deletions.length; i++){
+function commitDeletions(deletions, parentNode) {
+    for (let i = 0; i < deletions.length; i++) {
         parentNode.removeChild(getStateNode(deletions[i]));
     }
 }
@@ -118,11 +122,29 @@ function commitDeletions(deletions, parentNode){
 // 不是每个fiber都有dom节点
 function getStateNode(fiber) {
     let tem = fiber;
-  
+
     while (!tem.stateNode) {
-      tem = tem.child;
+        tem = tem.child;
     }
-  
+
     return tem.stateNode;
-  }
-  
+}
+
+function getHostSibling(sibling){
+    while(sibling){
+        if(sibling.stateNode && !(sibling.flags & Placement)){
+            // 如果sibling有dom，且该sibling不是移动的
+            return sibling.stateNode;
+        }
+        sibling = sibling.sibling;
+    }
+    return null;
+}
+
+function insertOrAppendPlacementNode(stateNode, before, parentNode){
+    if(before){
+        parentNode.insertBefore(stateNode, before);
+    } else {
+        parentNode.appendChild(stateNode);
+    }
+}

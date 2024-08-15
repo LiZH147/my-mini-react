@@ -191,7 +191,7 @@ export function useState(initalState) {
     + lastPlacedIndex = 0 上一次插入节点的位置 --- 用来判断更新时节点是否移动
     + 启用fiber节点的index属性，记录节点在链表中的位置
 2. 实现放置子节点位置的函数PlacedChild的初次渲染部分，即给fiber.index赋初始值
-## 更新
+## 更新fiber
 **聚焦于reconcileChildren(returnFiber, children)，即触发函数组件更新时对子组件的diff协调过程**
 整体遵循上图的过程：
 1. 从左向右比较新旧节点链表，相同节点复用，否则结束本次循环 --- 0 1 2 3 4 5 --> 0 1 | 3 4 5 6
@@ -199,3 +199,12 @@ export function useState(initalState) {
 3. 旧节点链表走完，就渲染每个剩下的新节点，加入到函数组件上 --- 0 1 2 --> 0 1 2 | 3 4
 4. 新旧都没走完，但是后面的不一样了。将旧节点剩余部分构造成哈希表(Map)，将新节点链表中剩余部分与哈希表逐个对比，哈希表中存在就复用，同时更新fiber.index，并在哈希表中删除该节点 --- 0 1 2 [3 4 5] --> 0 1 | 3 4
 5. 4中构造的哈希表中还有值，这说明有旧节点不需要了，加入到函数fiber的删除数组中即可。
+## 更新DOM层
+1 2 3 4 --> 2 1 3 4
+对于如上情况，我们看做是1在移动，因为2直接节点复用渲染了(lastPlacedIndex变量部分判断逻辑)
+PS: 此时fiber的顺序是对的，但由于节点1的flag是Placement，因此提交时走appendChild分支，所以缀在最后面。
+对于此，解决方法是找到[2 1 3 4]中在1后面的节点，即3，用insertBefore(node, beforeNode)方法插入到找到的节点前面。
+改造commitWorker方法中Placement分支部分：
+1. 找到走到该分支fiber节点的下一个节点
+2. 如果能找到，证明该节点是移动位置的节点，插入到找到节点的前面
+3. 如果为null，则说明是真正的Placement，直接appendChild即可
