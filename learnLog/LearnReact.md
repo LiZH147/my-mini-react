@@ -182,6 +182,7 @@ export function useState(initalState) {
 
 # 真正的React VDOM Diff
 ![alt text](image-2.png)
+![alt text](image-3.png)
 ## 初次渲染
 0. 初次渲染分为两种情况：
     + 真正的第一次进来，第一次渲染
@@ -208,3 +209,16 @@ PS: 此时fiber的顺序是对的，但由于节点1的flag是Placement，因此
 1. 找到走到该分支fiber节点的下一个节点
 2. 如果能找到，证明该节点是移动位置的节点，插入到找到节点的前面
 3. 如果为null，则说明是真正的Placement，直接appendChild即可
+
+# useEffect和useLayoutEffect
+![alt text](image-4.png)
+`useEffect(() => {}, 依赖项)`即useEffect是否执行、调用回调依赖于第二个参数，useLayoutEffect类似
+1. fiber上挂effect数组 --- hook.js
+**源码中effect和layoutEffect使用一个单链表存储，并挂载在fiber上**
+此处简单处理，将effect和layoutEffect用两个数组分别存储，并挂载fiber上。utils.js中新增两个flag用于区分。
+hook.memorizedState存储state或effect
+2. 在提交时执行回调 --- ReactWookLoop.js
+在提交时，遍历传入commit函数的wip上的两个数组。其中layoutEffect对应的数组同步执行，直接调用回调即可；而effect对应的数组异步执行，放在scheduleCallback中执行。
+3. 比较依赖项 --- utils.js and ReactWookLoop.js
+遍历比较即可，利用`Object.is()`
+

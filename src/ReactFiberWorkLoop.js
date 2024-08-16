@@ -75,7 +75,7 @@ function commitRoot() {
 }
 
 function commitWorker(wip) {
-    console.log(wip);
+    // console.log(wip);
 
     if (!wip) {
         return;
@@ -97,6 +97,11 @@ function commitWorker(wip) {
     if (wip.deletions) {
         commitDeletions(wip.deletions, stateNode || parentNode);
     }
+
+    if (wip.tag === FunctionComponent) {
+        invokeHooks(wip);
+    }
+
     // 2. 提交子节点
     commitWorker(wip.child);
     // 3. 提交兄弟节点
@@ -130,9 +135,9 @@ function getStateNode(fiber) {
     return tem.stateNode;
 }
 
-function getHostSibling(sibling){
-    while(sibling){
-        if(sibling.stateNode && !(sibling.flags & Placement)){
+function getHostSibling(sibling) {
+    while (sibling) {
+        if (sibling.stateNode && !(sibling.flags & Placement)) {
             // 如果sibling有dom，且该sibling不是移动的
             return sibling.stateNode;
         }
@@ -141,10 +146,26 @@ function getHostSibling(sibling){
     return null;
 }
 
-function insertOrAppendPlacementNode(stateNode, before, parentNode){
-    if(before){
+function insertOrAppendPlacementNode(stateNode, before, parentNode) {
+    if (before) {
         parentNode.insertBefore(stateNode, before);
     } else {
         parentNode.appendChild(stateNode);
+    }
+}
+
+function invokeHooks(wip) {
+    const { updateQueueOfEffect, updateQueueOfLayout } = wip;
+
+    for (let i = 0; i < updateQueueOfLayout.length; i++) {
+        const effect = updateQueueOfLayout[i];
+        effect.create();
+    }
+    
+    for (let i = 0; i < updateQueueOfEffect.length; i++) {
+        const effect = updateQueueOfEffect[i];
+        scheduleCallback(() => {
+            effect.create();
+        })
     }
 }

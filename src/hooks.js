@@ -1,4 +1,6 @@
+import { areHookInputsEqual } from "../../mini-react/src/utils";
 import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
+import { HookLayout, HookPassive } from "./utils";
 
 /**
  * 1. 状态值和hook等挂在哪里？ --- 函数组件的fiber上 --- 怎么获取当前的fiber --- 涉及到workLoop文件
@@ -25,11 +27,16 @@ import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 let currentlyRenderingFiber = null; // 当前需要更新hook的fiber节点
 let workInProgressHook = null; // 当前更新到哪个hook了
 
+let currentHook = null; // 老hook，用来比较新旧依赖项
+
 // 获取当前要更新hook的fiber --- 只在函数组件渲染或更新时调用一次
 export function renderWithHooks(wip) {
     currentlyRenderingFiber = wip;
     currentlyRenderingFiber.memorizedState = null;
     workInProgressHook = null;
+
+    currentlyRenderingFiber.updateQueueOfEffect = [];
+    currentlyRenderingFiber.updateQueueOfLayout = [];
 }
 function updateWorkInProgressHook() {
     let hook;
@@ -39,14 +46,17 @@ function updateWorkInProgressHook() {
         currentlyRenderingFiber.memorizedState = current.memorizedState;
         if (workInProgressHook) {
             workInProgressHook = hook = workInProgressHook.next
+            currentHook = currentHook.next;
         } else {
             // hook0
             workInProgressHook = hook = currentlyRenderingFiber.memorizedState;
+            currentHook = current.memorizedState;
         }
     } else {
         // 组件初次渲染 --- 初始化hook链表
+        currentHook = null;
         hook = {
-            memorizedState: null,
+            memorizedState: null, // state effect
             next: null
         }
         if (workInProgressHook) {
@@ -59,7 +69,7 @@ function updateWorkInProgressHook() {
     return hook;
 }
 export function useReducer(reducer, initalState) {
-    
+
     const hook = updateWorkInProgressHook();
 
     if (!currentlyRenderingFiber.alternate) {
@@ -85,10 +95,42 @@ function dispatchReducerAction(fiber, hook, reducer, action) {
     fiber.alternate = { ...fiber };
     fiber.sibling = null; // 在commit中会提交兄弟节点，但此处不应该更新兄弟节点
     scheduleUpdateOnFiber(fiber);
-    console.log('dispatchReducerAction');
 
 }
 
 export function useState(initalState) {
     return useReducer(null, initalState);
+}
+
+function updateEffectImp(hooksFlags, create, deps) {    
+    const hook = updateWorkInProgressHook();
+
+    if(currentHook){
+        const prevEffect = currentHook.memorizedState;
+        if(deps){
+            const prevDeps = prevEffect.deps;
+            if(areHookInputsEqual(deps, prevDeps)){
+                return;
+            }
+        }
+    }
+
+    const effect = { hooksFlags, create, deps };
+
+    hook.memorizedState = effect;
+
+    if(hooksFlags & HookPassive){
+        currentlyRenderingFiber.updateQueueOfEffect.push(effect);
+        
+    } else if(hooksFlags & HookLayout){
+        currentlyRenderingFiber.updateQueueOfLayout.push(effect);
+    } 
+}
+
+export function useEffect(create, deps) {
+    return updateEffectImp(HookPassive, create, deps);
+}
+
+export function useLayoutEffect(create, deps) {
+    return updateEffectImp(HookLayout, create, deps);
 }

@@ -1,13 +1,21 @@
 // import React from "react";
 // import ReactDOM from "react-dom";
 // import { useReducer } from "react";
-import { ReactDOM, Component, useReducer, useState } from "../which-react";
+import { ReactDOM, Component, useReducer, useState, useEffect, useLayoutEffect } from "../which-react";
 
 import "./index.css";
 
 function FunctionComponent(props) {
   const [count, setCount] = useReducer((x) => x + 1, 0);
   const [count2, setCount2] = useState(4)
+
+  useEffect(() => {
+    console.log("omg useEffect", count2);
+  }, [count2]);
+
+  useLayoutEffect(() => {
+    console.log("omg useLayoutEffect", count2);
+  }, [count2]);
 
   return (
     <div className="border">
