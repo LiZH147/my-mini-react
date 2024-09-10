@@ -222,3 +222,23 @@ hook.memorizedState存储state或effect
 3. 比较依赖项 --- utils.js and ReactWookLoop.js
 遍历比较即可，利用`Object.is()`
 
+# 自定义hook遇到的问题
+1. App组件调用useCounter，这个Hook调用useInterval来每秒更新一次计数器。但是App组件也调用useInterval每两秒随机更新一次页面背景色。更新页面背景色的回调函数因为一些原因从未执行过。
+原因：delay小的useInterval执行阻塞了delay大的useInterval执行回调函数
+解决：使用experimental_useEffectEvent包裹回调函数，使其不用成为useEffect的依赖项，这样Effect不会同步更新
+https://zh-hans.react.dev/learn/reusing-logic-with-custom-hooks
+
+```js
+/*在useInterval内部把tick回调函数包裹进一个EffectEvent。这将让你可以从Effect的依赖项中删掉onTick。每次组件重新渲染时，Effect将不会重新同步，所以页面背景颜色变化interval有机会触发之前不会每秒重置一次。随着这个修改，两个interval都会像预期一样工作并且不会互相干扰：*/
+import { useEffect } from 'react';
+import { experimental_useEffectEvent as useEffectEvent } from 'react';
+
+export function useInterval(callback, delay) {
+  const onTick = useEffectEvent(callback);
+  useEffect(() => {
+    const id = setInterval(onTick, delay);
+    return () => clearInterval(id);
+  }, [delay]);
+}
+
+```
